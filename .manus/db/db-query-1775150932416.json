@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE `evidence` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`operationId` int NOT NULL,\n\t`subjectId` int,\n\t`evidenceType` enum('photo','document','physical','digital','forensic','sensor_data','video','audio') NOT NULL,\n\t`title` varchar(255) NOT NULL,\n\t`description` text,\n\t`fileUrl` varchar(512),\n\t`fileType` varchar(64),\n\t`fileSize` int,\n\t`collectedAt` timestamp,\n\t`collectedBy` varchar(255),\n\t`lat` decimal(10,7),\n\t`lng` decimal(10,7),\n\t`chainOfCustody` json,\n\t`metadata` json,\n\t`createdBy` int,\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\tCONSTRAINT `evidence_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2QSJWSdhRPn1fY9.9c7521d1d2d8 --database FcbsvT94bBgi5LzxzWvZhs --execute CREATE TABLE `evidence` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`operationId` int NOT NULL,\n\t`subjectId` int,\n\t`evidenceType` enum('photo','document','physical','digital','forensic','sensor_data','video','audio') NOT NULL,\n\t`title` varchar(255) NOT NULL,\n\t`description` text,\n\t`fileUrl` varchar(512),\n\t`fileType` varchar(64),\n\t`fileSize` int,\n\t`collectedAt` timestamp,\n\t`collectedBy` varchar(255),\n\t`lat` decimal(10,7),\n\t`lng` decimal(10,7),\n\t`chainOfCustody` json,\n\t`metadata` json,\n\t`createdBy` int,\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\tCONSTRAINT `evidence_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1912
+}
