@@ -88,6 +88,8 @@ function createPublicContext(): TrpcContext {
   };
 }
 
+// ─── Happy Path Tests ────────────────────────────────────
+
 describe("API — Subjects", () => {
   it("creates a subject (authenticated)", async () => {
     const ctx = createAuthContext();
@@ -244,5 +246,179 @@ describe("API — Analytics", () => {
     expect(result).toHaveProperty("safetyFactor");
     expect(result).toHaveProperty("riskLevel");
     expect(result).toHaveProperty("willCollapse");
+  });
+});
+
+// ─── Negative Path / Edge Case Tests ─────────────────────
+
+describe("API — Input Validation (Negative Paths)", () => {
+  it("rejects subject creation without authentication", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+    await expect(
+      caller.subjects.create({
+        subjectType: "human",
+        subjectSubtype: "hiker",
+        name: "Unauthorized Subject",
+      })
+    ).rejects.toThrow();
+  });
+
+  it("rejects operation creation without authentication", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+    await expect(
+      caller.operations.create({
+        name: "Unauthorized Op",
+        priority: "medium",
+        environment: "wilderness",
+        centerLat: "50.88",
+        centerLng: "-119.92",
+        radiusKm: "10",
+      })
+    ).rejects.toThrow();
+  });
+
+  it("rejects sighting creation without authentication", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+    await expect(
+      caller.sightings.create({
+        operationId: 1,
+        lat: "50.89",
+        lng: "-119.91",
+        sightedAt: new Date(),
+        sightingType: "visual",
+        confidence: 5,
+      })
+    ).rejects.toThrow();
+  });
+
+  it("rejects team creation without authentication", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+    await expect(
+      caller.teams.create({
+        name: "Unauthorized Team",
+        teamType: "ground",
+        memberCount: 4,
+      })
+    ).rejects.toThrow();
+  });
+
+  it("rejects evidence creation without authentication", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+    await expect(
+      caller.evidence.create({
+        operationId: 1,
+        title: "Unauthorized Evidence",
+        evidenceType: "physical",
+      })
+    ).rejects.toThrow();
+  });
+});
+
+describe("API — Edge Cases", () => {
+  it("creates operation with minimal fields", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.operations.create({
+      name: "Minimal Op",
+      priority: "low",
+      environment: "urban",
+      centerLat: "0",
+      centerLng: "0",
+      radiusKm: "1",
+    });
+    expect(result).toHaveProperty("id");
+  });
+
+  it("creates subject with all optional fields empty", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.subjects.create({
+      subjectType: "animal",
+      subjectSubtype: "dog",
+      name: "Missing Dog",
+    });
+    expect(result).toHaveProperty("id");
+  });
+
+  it("creates operation with subject and all optional fields", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.operations.create({
+      name: "Full Detail Op",
+      priority: "critical",
+      environment: "mountain",
+      centerLat: "50.8812",
+      centerLng: "-119.8925",
+      radiusKm: "5",
+      temperatureC: -26,
+      searchRadiusM: 800,
+      subject: {
+        subjectType: "human",
+        subjectSubtype: "hiker",
+        name: "Ryan Shtuka",
+        age: 20,
+        gender: "male",
+        description: "Missing since Feb 2018",
+        circumstances: "Left a house party at Sundance Lodge, Sun Peaks Resort, walked into -26C night, never seen again.",
+        fitnessLevel: "athletic",
+        lastKnownLat: "50.8812",
+        lastKnownLng: "-119.8925",
+      },
+    });
+    expect(result).toHaveProperty("id");
+  });
+
+  it("snow bridge analysis with extreme parameters", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+
+    // Extreme cold, thick snow
+    const safe = await caller.analytics.snowBridge({
+      snowDepth_m: 5.0,
+      temperature_c: -40,
+      gapWidth_m: 1.0,
+      subjectWeight_kg: 80,
+    });
+    expect(safe.riskLevel).toBe("low");
+    expect(safe.willCollapse).toBe(false);
+
+    // Warm, thin snow, wide gap
+    const dangerous = await caller.analytics.snowBridge({
+      snowDepth_m: 0.2,
+      temperature_c: 5,
+      gapWidth_m: 4.0,
+      subjectWeight_kg: 100,
+    });
+    expect(dangerous.riskLevel).toBe("critical");
+    expect(dangerous.willCollapse).toBe(true);
+  });
+
+  it("movement profile for all subject types", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const types = [
+      { subjectType: "human" as const, subjectSubtype: "child" },
+      { subjectType: "human" as const, subjectSubtype: "elderly" },
+      { subjectType: "human" as const, subjectSubtype: "hiker" },
+      { subjectType: "human" as const, subjectSubtype: "hunter" },
+      { subjectType: "human" as const, subjectSubtype: "despondent" },
+      { subjectType: "human" as const, subjectSubtype: "dementia" },
+      { subjectType: "animal" as const, subjectSubtype: "dog" },
+      { subjectType: "animal" as const, subjectSubtype: "cat" },
+      { subjectType: "vehicle" as const, subjectSubtype: "car" },
+    ];
+
+    for (const t of types) {
+      const result = await caller.analytics.movementProfile(t);
+      expect(result.typicalSpeed_kmh).toBeGreaterThan(0);
+      expect(result.p50_km).toBeGreaterThan(0);
+      expect(result.p95_km).toBeGreaterThanOrEqual(result.p50_km);
+    }
   });
 });

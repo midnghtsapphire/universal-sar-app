@@ -264,11 +264,19 @@ export default function SARMap({
       marker.addTo(group);
     }
 
-    // Fit bounds if we have data
+    // Fit bounds if we have data — include zones, sightings, teams, LKP
     const allPoints: L.LatLng[] = [];
     if (lastKnownLat && lastKnownLng) allPoints.push(L.latLng(lastKnownLat, lastKnownLng));
     sightings.forEach(s => {
       const lat = Number(s.lat), lng = Number(s.lng);
+      if (!isNaN(lat) && !isNaN(lng)) allPoints.push(L.latLng(lat, lng));
+    });
+    zones.forEach(z => {
+      const lat = Number(z.centerLat), lng = Number(z.centerLng);
+      if (!isNaN(lat) && !isNaN(lng)) allPoints.push(L.latLng(lat, lng));
+    });
+    teams.forEach(t => {
+      const lat = Number(t.currentLat), lng = Number(t.currentLng);
       if (!isNaN(lat) && !isNaN(lng)) allPoints.push(L.latLng(lat, lng));
     });
     if (allPoints.length > 0 && mapRef.current) {

@@ -9,7 +9,7 @@ import { trpc } from "@/lib/trpc";
 import { useState, useMemo, useCallback } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
-import { Crosshair, MapPin, ArrowLeft, ArrowRight, Check } from "lucide-react";
+import { Crosshair, MapPin, ArrowLeft, ArrowRight, Check, Thermometer, Radar } from "lucide-react";
 
 const SUBJECT_SUBTYPES: Record<string, { label: string; value: string }[]> = {
   human: [
@@ -158,11 +158,15 @@ function NewOperationContent() {
   const [circumstances, setCircumstances] = useState("");
   const [attrs, setAttrs] = useState<any>({});
 
+  // Terrain analysis fields
+  const [temperatureC, setTemperatureC] = useState("");
+  const [searchRadiusM, setSearchRadiusM] = useState("500");
+
   const subtypes = useMemo(() => SUBJECT_SUBTYPES[subjectType] || [], [subjectType]);
 
   const createOp = trpc.operations.create.useMutation({
     onSuccess: (data: any) => {
-      toast.success("Search operation launched! SAR analysis running...");
+      toast.success("Search operation launched! SAR analysis + terrain analysis running...");
       setLocation(`/operations/${data.id}`);
     },
     onError: (err: any) => {
@@ -182,6 +186,8 @@ function NewOperationContent() {
       centerLat: lastKnownLat,
       centerLng: lastKnownLng,
       notes,
+      temperatureC: temperatureC ? parseFloat(temperatureC) : undefined,
+      searchRadiusM: searchRadiusM ? parseInt(searchRadiusM) : 500,
       subject: {
         subjectType: subjectType as any,
         subjectSubtype: subjectSubtype || undefined,
@@ -194,7 +200,7 @@ function NewOperationContent() {
         attributes: Object.keys(attrs).length > 0 ? attrs : undefined,
       },
     });
-  }, [opName, subjectName, lastKnownLat, lastKnownLng, priority, environment, notes, subjectType, subjectSubtype, subjectDesc, circumstances, attrs, createOp]);
+  }, [opName, subjectName, lastKnownLat, lastKnownLng, priority, environment, notes, subjectType, subjectSubtype, subjectDesc, circumstances, attrs, temperatureC, searchRadiusM, createOp]);
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -293,19 +299,44 @@ function NewOperationContent() {
         </Card>
       )}
 
-      {/* Step 3: Location & Launch */}
+      {/* Step 3: Location, Terrain Parameters & Launch */}
       {step === 3 && (
         <Card className="glass border-border/30">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><MapPin className="h-5 w-5 text-primary" /> Last Known Position & Launch</CardTitle>
+            <CardTitle className="flex items-center gap-2"><MapPin className="h-5 w-5 text-primary" /> Last Known Position &amp; Launch</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div><Label className="text-muted-foreground">Latitude *</Label>
-                <Input type="number" step="any" placeholder="e.g. 51.1637" className="glass border-border/30 mt-1" value={lastKnownLat} onChange={e => setLastKnownLat(e.target.value)} /></div>
+                <Input type="number" step="any" placeholder="e.g. 50.8812" className="glass border-border/30 mt-1" value={lastKnownLat} onChange={e => setLastKnownLat(e.target.value)} /></div>
               <div><Label className="text-muted-foreground">Longitude *</Label>
-                <Input type="number" step="any" placeholder="e.g. -119.8860" className="glass border-border/30 mt-1" value={lastKnownLng} onChange={e => setLastKnownLng(e.target.value)} /></div>
+                <Input type="number" step="any" placeholder="e.g. -119.8925" className="glass border-border/30 mt-1" value={lastKnownLng} onChange={e => setLastKnownLng(e.target.value)} /></div>
             </div>
+
+            {/* Terrain Analysis Parameters */}
+            <div className="border-t border-border/20 pt-4">
+              <p className="text-sm font-medium text-primary mb-3 flex items-center gap-2">
+                <Radar className="h-4 w-4" /> Terrain Analysis Parameters
+              </p>
+              <p className="text-xs text-muted-foreground mb-3">
+                These parameters drive the real terrain analysis engine (OpenTopoData elevation, Overpass OSM features, GPR protocol generation).
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground flex items-center gap-1">
+                    <Thermometer className="h-3 w-3" /> Temperature at Scene (&deg;C)
+                  </Label>
+                  <Input type="number" step="any" placeholder="e.g. -26 (affects GPR protocol)" className="glass border-border/30 mt-1" value={temperatureC} onChange={e => setTemperatureC(e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-muted-foreground flex items-center gap-1">
+                    <Radar className="h-3 w-3" /> Search Radius (meters)
+                  </Label>
+                  <Input type="number" placeholder="e.g. 500" className="glass border-border/30 mt-1" value={searchRadiusM} onChange={e => setSearchRadiusM(e.target.value)} />
+                </div>
+              </div>
+            </div>
+
             <div><Label className="text-muted-foreground">Circumstances of Disappearance</Label>
               <Textarea placeholder="What happened? Last known activity, direction of travel, companions..." className="glass border-border/30 mt-1" rows={3} value={circumstances} onChange={e => setCircumstances(e.target.value)} /></div>
 
@@ -318,8 +349,13 @@ function NewOperationContent() {
                 <span className="text-muted-foreground">Environment:</span><span className="capitalize">{environment}</span>
                 <span className="text-muted-foreground">Subject:</span><span>{subjectName}</span>
                 <span className="text-muted-foreground">Type:</span><span className="capitalize">{subjectType} / {subjectSubtype || "general"}</span>
-                <span className="text-muted-foreground">LKP:</span><span>{lastKnownLat || "—"}, {lastKnownLng || "—"}</span>
+                <span className="text-muted-foreground">LKP:</span><span>{lastKnownLat || "\u2014"}, {lastKnownLng || "\u2014"}</span>
+                <span className="text-muted-foreground">Temperature:</span><span>{temperatureC ? `${temperatureC}\u00B0C` : "Auto (Open-Meteo)"}</span>
+                <span className="text-muted-foreground">Terrain Radius:</span><span>{searchRadiusM || "500"}m</span>
               </div>
+              <p className="text-xs text-muted-foreground mt-2 italic">
+                On launch: SAR probability analysis runs immediately. Terrain analysis (real elevation + OSM data) runs in background and updates within 30-60 seconds.
+              </p>
             </div>
 
             <div className="flex justify-between">

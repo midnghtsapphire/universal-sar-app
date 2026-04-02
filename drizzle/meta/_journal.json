@@ -15,6 +15,13 @@
       "when": 1775150901709,
       "tag": "0001_flippant_centennial",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1775165631057,
+      "tag": "0002_zippy_marvel_boy",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,37 @@
+Test Results - End-to-End CRUD Testing
+=======================================
+
+Test 1: Create Lost Dog Operation
+- Filled: Name="Lost Dog - Golden Retriever - Stanley Park", Type=Animal
+- Subject: Buddy, breed=Golden Retriever, weight=32kg, collar=Red collar tag #4521
+- Location: 49.3017, -123.1417 (Stanley Park, Vancouver)
+- Result: SUCCESS - Redirected to /operations/30002
+- Map: Shows Stanley Park area with LKP marker (pulsing amber dot)
+- SAR Analysis: Search Radius = 0.7 km (was 0.1 km before fix, now reasonable for animal)
+- Probability Score: 50%
+- Timeline: Shows "Search Operation Launched" event
+- Toast: "Search operation launched! SAR analysis running..."
+
+Test 2: Operations List
+- Shows both operations: "Sun Peaks Missing Hiker - Feb 2018" and "Sun Peaks"
+- Both show medium priority, active status, wilderness environment
+- Clicking navigates to operation detail
+
+Test 3: Command Center
+- Stats cards show correct counts from database
+- Recent operations list populated
+- Quick action cards navigate correctly
+
+CONFIRMED WORKING:
+- New Operation creation (all 3 wizard steps)
+- Subject type switching (Human/Animal/Vehicle/Object) with dynamic attribute forms
+- SAR analysis runs on creation (radius, probability zones, weather)
+- Operation detail page with map, tabs, data
+- Operations list with real data
+- Navigation between all pages
+
+REMAINING TO VERIFY:
+- Sightings form submission
+- Teams form submission
+- Evidence form submission
+- Live Map aggregation

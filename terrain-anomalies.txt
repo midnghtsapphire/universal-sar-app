@@ -1,0 +1,12 @@
+TERRAIN ANOMALIES TAB - REAL DATA FROM OPENTOPDATA
+
+Terrain tab shows "Terrain Anomalies (227 detected)" with a table:
+# | Phase | Lat | Lon | Elev (m) | Slope | Dist (m) | Flags
+1 | Phase 3 | 50.87895 | -119.89179 | 1289 | - | - | -
+2 | Phase 3 | 50.88030 | -119.88752 | 1311 | - | - | -
+3 | Phase 3 | 50.87940 | -119.89036 | 1295 | - | - | -
+4 | Phase 3 | 50.87806 | -119.89535 | 1264 | - | - | -
+5 | Phase 3 | 50.88075 | -119.89820 | 1229 | - | - | -
+
+All Phase 3 anomalies with real coordinates and elevations.
+Page has 2766 pixels below viewport - many more anomalies to scroll through.

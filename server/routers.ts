@@ -15,6 +15,32 @@ import {
   type SightingInput,
 } from "./algorithms/sar-engine";
 
+// Python Terrain Analyst API Bridge
+const TERRAIN_API_URL = process.env.TERRAIN_API_URL || "http://localhost:5001";
+
+async function callTerrainAPI(endpoint: string, body: Record<string, unknown>): Promise<any> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 120000);
+    const res = await fetch(`${TERRAIN_API_URL}${endpoint}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error(`[TerrainAPI] ${endpoint} failed (${res.status}):`, errText);
+      return null;
+    }
+    return await res.json();
+  } catch (err) {
+    console.error(`[TerrainAPI] ${endpoint} error:`, err);
+    return null;
+  }
+}
+
 export const appRouter = router({
   system: systemRouter,
 
@@ -27,7 +53,7 @@ export const appRouter = router({
     }),
   }),
 
-  // ─── Subjects ────────────────────────────────────────
+  // Subjects
   subjects: router({
     create: protectedProcedure
       .input(z.object({
@@ -47,8 +73,19 @@ export const appRouter = router({
       }))
       .mutation(async ({ input, ctx }) => {
         return db.createSubject({
-          ...input,
-          lastSeenAt: input.lastSeenAt || undefined,
+          operationId: input.operationId ?? null,
+          subjectType: input.subjectType,
+          subjectSubtype: input.subjectSubtype ?? null,
+          name: input.name,
+          description: input.description ?? null,
+          photoUrl: input.photoUrl ?? null,
+          lastKnownLat: input.lastKnownLat ?? null,
+          lastKnownLng: input.lastKnownLng ?? null,
+          lastKnownAlt: input.lastKnownAlt ?? null,
+          lastSeenAt: input.lastSeenAt ?? null,
+          directionOfTravel: input.directionOfTravel ?? null,
+          circumstances: input.circumstances ?? null,
+          attributes: input.attributes ?? null,
           createdBy: ctx.user.id,
         });
       }),
@@ -80,7 +117,7 @@ export const appRouter = router({
       .mutation(async ({ input }) => db.updateSubject(input.id, input.data)),
   }),
 
-  // ─── Search Operations ───────────────────────────────
+  // Search Operations
   operations: router({
     create: protectedProcedure
       .input(z.object({
@@ -91,7 +128,8 @@ export const appRouter = router({
         centerLng: z.string().optional(),
         radiusKm: z.string().optional(),
         notes: z.string().optional(),
-        // Subject data for inline creation
+        temperatureC: z.number().optional(),
+        searchRadiusM: z.number().optional(),
         subject: z.object({
           subjectType: z.enum(["human", "animal", "vehicle", "object"]),
           subjectSubtype: z.string().optional(),
@@ -106,41 +144,46 @@ export const appRouter = router({
         }).optional(),
       }))
       .mutation(async ({ input, ctx }) => {
-        // Create the operation
         const op = await db.createOperation({
           name: input.name,
           status: "active",
           priority: input.priority || "medium",
           environment: input.environment || "wilderness",
-          centerLat: input.centerLat || input.subject?.lastKnownLat,
-          centerLng: input.centerLng || input.subject?.lastKnownLng,
-          radiusKm: input.radiusKm,
-          notes: input.notes,
+          centerLat: input.centerLat || input.subject?.lastKnownLat || null,
+          centerLng: input.centerLng || input.subject?.lastKnownLng || null,
+          radiusKm: input.radiusKm ?? null,
+          boundaryGeoJson: null,
+          probabilityScore: null,
+          weatherConditions: null,
+          terrainData: null,
+          notes: input.notes ?? null,
           startedAt: new Date(),
+          closedAt: null,
           createdBy: ctx.user.id,
         });
 
-        // Create subject if provided
         if (input.subject && op) {
-          const subject = await db.createSubject({
+          await db.createSubject({
             operationId: op.id,
             subjectType: input.subject.subjectType,
-            subjectSubtype: input.subject.subjectSubtype,
+            subjectSubtype: input.subject.subjectSubtype ?? null,
             name: input.subject.name,
-            description: input.subject.description,
+            description: input.subject.description ?? null,
+            photoUrl: null,
             lastKnownLat: input.subject.lastKnownLat,
             lastKnownLng: input.subject.lastKnownLng,
+            lastKnownAlt: null,
             lastSeenAt: input.subject.lastSeenAt || new Date(),
-            directionOfTravel: input.subject.directionOfTravel,
-            circumstances: input.subject.circumstances,
-            attributes: input.subject.attributes,
+            directionOfTravel: input.subject.directionOfTravel ?? null,
+            circumstances: input.subject.circumstances ?? null,
+            attributes: input.subject.attributes ?? null,
             createdBy: ctx.user.id,
           });
 
-          // Run SAR analysis
           const lat = parseFloat(input.subject.lastKnownLat);
           const lng = parseFloat(input.subject.lastKnownLng);
           if (!isNaN(lat) && !isNaN(lng)) {
+            // 1. Run TypeScript SAR analysis (fast, synchronous)
             try {
               const profile: SubjectProfile = {
                 type: input.subject.subjectType,
@@ -153,7 +196,6 @@ export const appRouter = router({
                 input.subject.lastSeenAt || new Date()
               );
 
-              // Store probability zones
               for (const zone of analysis.zones) {
                 await db.createProbabilityZone({
                   operationId: op.id,
@@ -169,7 +211,6 @@ export const appRouter = router({
                 });
               }
 
-              // Update operation with boundary and weather
               await db.updateOperation(op.id, {
                 boundaryGeoJson: analysis.boundaryGeoJson,
                 radiusKm: String(analysis.maxRadiusKm) as any,
@@ -177,19 +218,60 @@ export const appRouter = router({
                 probabilityScore: String(analysis.zones[0]?.probability * 100 || 0) as any,
               });
 
-              // Log timeline event
               await db.createTimelineEvent({
                 operationId: op.id,
                 eventType: "status_change",
                 title: "Search Operation Launched",
-                description: `Operation "${input.name}" created. SAR analysis complete. Max search radius: ${analysis.maxRadiusKm.toFixed(1)} km. Weather: ${analysis.weather.temperature_c}°C.`,
+                description: `SAR analysis complete. Max radius: ${analysis.maxRadiusKm.toFixed(1)} km. Weather: ${analysis.weather.temperature_c}\u00B0C.`,
                 lat: String(lat) as any,
                 lng: String(lng) as any,
                 createdBy: ctx.user.id,
               });
             } catch (err) {
               console.error("[Operations] SAR analysis failed:", err);
+              await db.createTimelineEvent({
+                operationId: op.id,
+                eventType: "status_change",
+                title: "Search Operation Launched",
+                description: `Operation "${input.name}" created. SAR analysis pending.`,
+                lat: String(lat) as any,
+                lng: String(lng) as any,
+                createdBy: ctx.user.id,
+              });
             }
+
+            // 2. Run Python Terrain Analyst (calls real APIs - OpenTopoData, Overpass)
+            // This is async and may take 30-60 seconds
+            const terrainPromise = callTerrainAPI("/api/analyze", {
+              lat,
+              lon: lng,
+              radius_m: input.searchRadiusM || 500,
+              temp_c: input.temperatureC ?? -18,
+            });
+
+            terrainPromise.then(async (terrainResult) => {
+              if (terrainResult) {
+                try {
+                  await db.updateOperation(op.id, {
+                    terrainData: terrainResult as any,
+                  });
+                  await db.createTimelineEvent({
+                    operationId: op.id,
+                    eventType: "note",
+                    title: "Terrain Analysis Complete",
+                    description: `Real terrain data: ${terrainResult.terrain_stats?.anomaly_count || 0} anomalies detected (${terrainResult.terrain_stats?.phase3_count || 0} Phase 3). Elevation range: ${terrainResult.terrain_stats?.elevation_range?.toFixed(0) || '?'}m. OSM: ${terrainResult.osm_features?.waterways?.length || 0} waterways, ${terrainResult.osm_features?.roads?.length || 0} roads.`,
+                    lat: String(lat) as any,
+                    lng: String(lng) as any,
+                    createdBy: ctx.user.id,
+                  });
+                  console.log(`[TerrainAPI] Analysis stored for operation ${op.id}: ${terrainResult.terrain_stats?.anomaly_count || 0} anomalies`);
+                } catch (dbErr) {
+                  console.error("[TerrainAPI] Failed to store terrain results:", dbErr);
+                }
+              }
+            }).catch(err => {
+              console.error("[TerrainAPI] Background terrain analysis failed:", err);
+            });
           }
         }
 
@@ -236,9 +318,47 @@ export const appRouter = router({
         }
         return result;
       }),
+
+    // Run terrain analysis on demand for an existing operation
+    runTerrainAnalysis: protectedProcedure
+      .input(z.object({
+        operationId: z.number(),
+        lat: z.number(),
+        lon: z.number(),
+        radiusM: z.number().optional(),
+        tempC: z.number().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const result = await callTerrainAPI("/api/analyze", {
+          lat: input.lat,
+          lon: input.lon,
+          radius_m: input.radiusM || 500,
+          temp_c: input.tempC ?? -18,
+        });
+
+        if (!result) {
+          throw new Error("Terrain analysis failed - Python API unavailable or returned error");
+        }
+
+        await db.updateOperation(input.operationId, {
+          terrainData: result as any,
+        });
+
+        await db.createTimelineEvent({
+          operationId: input.operationId,
+          eventType: "note",
+          title: "Terrain Analysis Complete (Manual)",
+          description: `${result.terrain_stats?.anomaly_count || 0} anomalies detected. Elevation range: ${result.terrain_stats?.elevation_range?.toFixed(0) || '?'}m.`,
+          lat: String(input.lat) as any,
+          lng: String(input.lon) as any,
+          createdBy: ctx.user.id,
+        });
+
+        return result;
+      }),
   }),
 
-  // ─── Sightings ───────────────────────────────────────
+  // Sightings
   sightings: router({
     create: protectedProcedure
       .input(z.object({
@@ -255,17 +375,24 @@ export const appRouter = router({
       }))
       .mutation(async ({ input, ctx }) => {
         const sighting = await db.createSighting({
-          ...input,
-          sightingType: input.sightingType || "visual",
+          operationId: input.operationId,
+          subjectId: input.subjectId ?? null,
+          lat: input.lat,
+          lng: input.lng,
           sightedAt: input.sightedAt,
+          sightingType: input.sightingType || "visual",
+          confidence: input.confidence,
+          description: input.description ?? null,
+          reporterName: input.reporterName ?? null,
+          reporterContact: input.reporterContact ?? null,
           createdBy: ctx.user.id,
         });
 
         // Trigger Bayesian update
         try {
           const op = await db.getOperationById(input.operationId);
-          const opSubjects = await db.getSubjectsByOperation(input.operationId);
-          const subject = opSubjects[0];
+          const subjects = await db.getSubjectsByOperation(input.operationId);
+          const subject = subjects[0];
           if (op && subject && subject.lastKnownLat && subject.lastKnownLng) {
             const allSightings = await db.getSightingsByOperation(input.operationId);
             const sightingInputs: SightingInput[] = allSightings.map(s => ({
@@ -289,7 +416,6 @@ export const appRouter = router({
               sightingInputs
             );
 
-            // Replace probability zones
             await db.deleteZonesByOperation(input.operationId);
             for (const zone of analysis.zones) {
               await db.createProbabilityZone({
@@ -306,7 +432,6 @@ export const appRouter = router({
               });
             }
 
-            // Update operation probability score
             await db.updateOperation(input.operationId, {
               probabilityScore: String(analysis.zones[0]?.probability * 100 || 0) as any,
             });
@@ -315,7 +440,6 @@ export const appRouter = router({
           console.error("[Sightings] Bayesian update failed:", err);
         }
 
-        // Log timeline event
         await db.createTimelineEvent({
           operationId: input.operationId,
           eventType: "sighting",
@@ -334,7 +458,7 @@ export const appRouter = router({
       .query(async ({ input }) => db.getSightingsByOperation(input.operationId)),
   }),
 
-  // ─── Teams ──────────────────────────────────────────
+  // Teams
   teams: router({
     create: protectedProcedure
       .input(z.object({
@@ -345,7 +469,14 @@ export const appRouter = router({
         contactInfo: z.string().optional(),
         notes: z.string().optional(),
       }))
-      .mutation(async ({ input }) => db.createTeam({ ...input, teamType: input.teamType || "ground" })),
+      .mutation(async ({ input }) => db.createTeam({
+          name: input.name,
+          teamType: input.teamType || "ground",
+          memberCount: input.memberCount ?? null,
+          equipment: input.equipment ?? null,
+          contactInfo: input.contactInfo ?? null,
+          notes: input.notes ?? null,
+        })),
 
     list: publicProcedure
       .input(z.object({ limit: z.number().optional() }).optional())
@@ -397,7 +528,7 @@ export const appRouter = router({
       .mutation(async ({ input }) => db.updateTeam(input.id, input.data as any)),
   }),
 
-  // ─── Evidence ────────────────────────────────────────
+  // Evidence
   evidence: router({
     create: protectedProcedure
       .input(z.object({
@@ -414,7 +545,20 @@ export const appRouter = router({
         lng: z.string().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
-        const ev = await db.createEvidence({ ...input, collectedAt: input.collectedAt || undefined, createdBy: ctx.user.id });
+        const ev = await db.createEvidence({
+          operationId: input.operationId,
+          subjectId: input.subjectId ?? null,
+          evidenceType: input.evidenceType,
+          title: input.title,
+          description: input.description ?? null,
+          fileUrl: input.fileUrl ?? null,
+          fileType: input.fileType ?? null,
+          collectedAt: input.collectedAt ?? null,
+          collectedBy: input.collectedBy ?? null,
+          lat: input.lat ?? null,
+          lng: input.lng ?? null,
+          createdBy: ctx.user.id,
+        });
         await db.createTimelineEvent({
           operationId: input.operationId,
           eventType: "evidence_found",
@@ -432,7 +576,7 @@ export const appRouter = router({
       .query(async ({ input }) => db.getEvidenceByOperation(input.operationId)),
   }),
 
-  // ─── Timeline ────────────────────────────────────────
+  // Timeline
   timeline: router({
     getByOperation: publicProcedure
       .input(z.object({ operationId: z.number(), limit: z.number().optional() }))
@@ -455,14 +599,77 @@ export const appRouter = router({
       }),
   }),
 
-  // ─── Probability Zones ──────────────────────────────
+  // Probability Zones
   zones: router({
     getByOperation: publicProcedure
       .input(z.object({ operationId: z.number() }))
       .query(async ({ input }) => db.getZonesByOperation(input.operationId)),
   }),
 
-  // ─── Analytics ───────────────────────────────────────
+  // Terrain (direct Python API calls from frontend)
+  terrain: router({
+    analyze: protectedProcedure
+      .input(z.object({
+        lat: z.number(),
+        lon: z.number(),
+        radiusM: z.number().optional(),
+        tempC: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const result = await callTerrainAPI("/api/analyze", {
+          lat: input.lat,
+          lon: input.lon,
+          radius_m: input.radiusM || 500,
+          temp_c: input.tempC ?? -18,
+        });
+        if (!result) throw new Error("Terrain analysis failed");
+        return result;
+      }),
+
+    elevation: publicProcedure
+      .input(z.object({
+        lat: z.number(),
+        lon: z.number(),
+        radiusM: z.number().optional(),
+      }))
+      .query(async ({ input }) => {
+        const result = await callTerrainAPI("/api/elevation", {
+          lat: input.lat,
+          lon: input.lon,
+          radius_m: input.radiusM || 500,
+        });
+        if (!result) throw new Error("Elevation fetch failed");
+        return result;
+      }),
+
+    features: publicProcedure
+      .input(z.object({
+        lat: z.number(),
+        lon: z.number(),
+        radiusM: z.number().optional(),
+      }))
+      .query(async ({ input }) => {
+        const result = await callTerrainAPI("/api/features", {
+          lat: input.lat,
+          lon: input.lon,
+          radius_m: input.radiusM || 600,
+        });
+        if (!result) throw new Error("OSM feature fetch failed");
+        return result;
+      }),
+
+    health: publicProcedure.query(async () => {
+      try {
+        const res = await fetch(`${TERRAIN_API_URL}/health`, { signal: AbortSignal.timeout(5000) });
+        if (res.ok) return { status: "online", ...(await res.json()) };
+        return { status: "error", code: res.status };
+      } catch {
+        return { status: "offline" };
+      }
+    }),
+  }),
+
+  // Analytics
   analytics: router({
     stats: publicProcedure.query(async () => db.getOperationStats()),
 

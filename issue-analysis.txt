@@ -1,0 +1,30 @@
+Issue Analysis - Apr 2, 2026
+
+FINDING: The backend CRUD is actually working. The user's report that "nothing works" was likely 
+because the search radius was too small (0.1 km) making it look broken, and the Live Map showed 
+nothing in "All Operations" mode.
+
+ROOT CAUSES:
+
+1. SEARCH RADIUS TOO SMALL (0.1 km)
+   - In calculateMaxTravelRadius(), line 309: timeFactor = Math.min(cappedHours / 24, 1.0)
+   - When lastSeenAt is set to new Date() (just now), hoursElapsed ≈ 0
+   - So timeFactor ≈ 0, and maxRadius = p95_km * 0 = 0
+   - Falls through to Math.max(maxRadius, 0.1) = 0.1 km
+   - FIX: Use a minimum of 1 hour elapsed, and ensure reasonable minimum radii per subject type
+
+2. LIVE MAP "ALL OPERATIONS" SHOWS NOTHING
+   - LiveMap.tsx only queries operations.getById when a specific operation is selected
+   - When "All Operations" is selected, opId is undefined, no detail query runs
+   - All arrays (zones, sightings, teams) default to empty
+   - FIX: When "All Operations" is selected, aggregate data from all operations
+
+3. SUBJECT SUBTYPE NOT BEING SET
+   - NewOperation.tsx sends subjectSubtype but the "Select category" dropdown might not be required
+   - If no subtype is selected, the movement profile defaults to generic (type/default)
+   - For human/default: p25=0.5, p50=1.5, p75=3.0, p95=6.0
+   - But with hoursElapsed=0, this still produces 0.1 km
+   - FIX: Ensure minimum elapsed time of at least 1 hour for calculations
+
+4. OPERATIONS LIST WORKS - Confirmed 2 operations show up
+5. SIGHTINGS/TEAMS/EVIDENCE FORMS - Appear correctly wired based on code review

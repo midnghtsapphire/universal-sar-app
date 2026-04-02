@@ -1,0 +1,12 @@
+Analytics Test Results - PASS
+==============================
+All real data displayed:
+- Stats: 5 Total Ops, 5 Active, 0 Closed, 3 Subjects, 1 Team (all correct from DB)
+- Movement Profile Calculator: Shows Koester LPB data for Human/Hiker
+  - 25th percentile: 1 km, 50th: 2.5 km, 75th: 5 km, 95th: 10 km
+  - Typical speed: 2.5 km/h
+- Weather Lookup: REAL data from Open-Meteo API
+  - Location: 51.1637, -119.886 (Sun Peaks area)
+  - Temperature: 8.4C, Wind: 9.7 km/h (292 deg), Precipitation: 0mm
+  - Humidity: 50%, Snow Depth: 0cm, Visibility: >10km
+  - This is LIVE weather data from the free Open-Meteo API

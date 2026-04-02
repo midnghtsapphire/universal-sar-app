@@ -1,0 +1,12 @@
+SIGHTING SUBMISSION SUCCESS!
+
+The sighting was created and now appears in the list:
+- Type: Visual Sighting
+- Coordinates: 50.8820000, -119.8910000
+- Date: 4/2/2026, 9:45:28 PM
+- Description: "Saw footprints in snow heading east toward the tree line, approximately 200m from Sundance Resort parking lot."
+- Confidence: 5/10
+- The dialog closed automatically after submission
+- The sighting appeared in the list immediately
+
+Bayesian probability update should have triggered on the backend.

@@ -304,16 +304,18 @@ export function calculateMaxTravelRadius(
   const profile = getMovementProfile(subject);
   const adjustedSpeed = adjustSpeedForConditions(profile.typicalSpeed_kmh, weather, terrain, subject);
 
-  // Time factor: scale up over first 72 hours then cap
-  const cappedHours = Math.min(hoursElapsed, 72);
+  // Minimum 1 hour elapsed — a subject could have been moving before being reported
+  const effectiveHours = Math.max(hoursElapsed, 1);
+  const cappedHours = Math.min(effectiveHours, 72);
   const timeFactor = Math.min(cappedHours / 24, 1.0);
 
-  // Base max from 95th percentile scaled by time
+  // Base max from 95th percentile scaled by time, but never below p25
   let maxRadius = profile.p95_km * timeFactor;
+  maxRadius = Math.max(maxRadius, profile.p25_km); // Always at least 25th percentile
 
   // Also consider speed-based distance
   const speedBasedMax = adjustedSpeed * cappedHours;
-  maxRadius = Math.max(maxRadius, speedBasedMax * 0.5); // Use 50% of theoretical max
+  maxRadius = Math.max(maxRadius, speedBasedMax * 0.5);
 
   // Vehicle override
   if (subject.type === 'vehicle') {
@@ -321,7 +323,16 @@ export function calculateMaxTravelRadius(
     maxRadius = Math.max(maxRadius, range);
   }
 
-  return Math.max(maxRadius, 0.1); // Minimum 100m
+  // Sensible minimums by subject type
+  const minimums: Record<string, number> = {
+    human: 1.0,   // At least 1 km for any human
+    animal: 0.5,  // At least 500m for animals
+    vehicle: 10,  // At least 10 km for vehicles
+    object: 0.1,  // Objects stay put
+  };
+  const minRadius = minimums[subject.type] ?? 0.5;
+
+  return Math.max(maxRadius, minRadius);
 }
 
 // ─── Algorithm 5: Bayesian Probability Zones ────────────
@@ -339,8 +350,12 @@ export function generateProbabilityZones(
   // Generate three concentric probability zones
   const zones: ProbabilityZoneResult[] = [];
 
+  // Minimum 1 hour elapsed for zone calculations
+  const effectiveHours = Math.max(hoursElapsed, 1);
+  const timeFactor = Math.min(effectiveHours / 24, 1.0);
+
   // Primary zone: 25th percentile distance — highest probability
-  const p25Radius = Math.max(profile.p25_km * Math.min(hoursElapsed / 24, 1), 0.05);
+  const p25Radius = Math.max(profile.p25_km * timeFactor, profile.p25_km * 0.5, 0.2);
   const primaryHull = generateSearchBoundary([lastKnown], p25Radius);
   const primaryCenter = centroid(primaryHull);
   zones.push({
@@ -356,7 +371,7 @@ export function generateProbabilityZones(
   });
 
   // Secondary zone: 50th–75th percentile
-  const p75Radius = Math.max(profile.p75_km * Math.min(hoursElapsed / 24, 1), 0.1);
+  const p75Radius = Math.max(profile.p75_km * timeFactor, profile.p75_km * 0.5, 0.5);
   const secondaryHull = generateSearchBoundary([lastKnown], p75Radius);
   const secondaryCenter = centroid(secondaryHull);
   zones.push({

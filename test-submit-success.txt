@@ -1,0 +1,22 @@
+FORM SUBMISSION SUCCESS!
+
+The operation was created successfully and redirected to /operations/60002.
+
+What's visible on the Operation Detail page:
+- Title: "Sun Peaks Missing Person - Ryan Shtuka Feb 2018 (TEST)"
+- Tags: critical, active, Wilderness
+- Map: Shows a pulsing marker at the LKP (50.8812, -119.8925) on OpenStreetMap
+- Map has Dark/Satellite/Topographic layer controls
+- Tabs: Overview, Subject, Terrain, GPR Protocol, Zones (3), Timeline (1), Weather
+- Overview shows: Search Radius 1.0 km, Probability Score 50%, Anomalies Found: —, Active Teams: 0
+- Terrain analysis message: "Terrain analysis not yet available. It runs automatically on creation (30-60 sec) or you can trigger it manually."
+- Has "Run Terrain Analysis Now" button
+- Has "Report Sighting" and "Run Terrain Analysis" buttons in header
+
+The SAR analysis ran successfully:
+- 3 probability zones were created
+- 1 timeline event was created
+- Search radius calculated to 1.0 km
+- Probability score: 50%
+
+The terrain analysis is running in background (30-60 sec) via the Python API.

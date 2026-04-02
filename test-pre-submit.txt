@@ -1,0 +1,12 @@
+PRE-SUBMIT TEST STATE:
+- Operation Name: Sun Peaks Missing Person - Ryan Shtuka Feb 2018 (TEST)
+- Priority: Critical
+- Environment: Wilderness
+- Subject: Ryan Shtuka, Human / Hiker
+- Age: 20, Height: 183cm, Weight: 82kg
+- LKP: 50.8812, -119.8925
+- Temperature: -26C
+- Search Radius: 500m
+- Circumstances: Left a house party at Sundance Resort...
+- Operation Summary shows all values correctly
+- About to click "Launch Search Operation"

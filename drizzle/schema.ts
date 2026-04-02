@@ -30,7 +30,7 @@ export const subjects = mysqlTable("subjects", {
   lastKnownAlt: decimal("lastKnownAlt", { precision: 8, scale: 2 }),
   lastSeenAt: timestamp("lastSeenAt"),
   directionOfTravel: varchar("directionOfTravel", { length: 16 }),
-  circumstances: varchar("circumstances", { length: 64 }),
+  circumstances: text("circumstances"),
   status: mysqlEnum("status", ["missing", "located", "deceased", "suspended"]).default("missing").notNull(),
   attributes: json("attributes"),
   createdBy: int("createdBy").notNull(),
