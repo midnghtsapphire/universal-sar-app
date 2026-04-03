@@ -107,3 +107,12 @@
 - [x] Verify anomaly detection runs on real data (227 anomalies detected)
 - [x] Verify GPR protocol generates correctly for -26C (dielectric 3.5 confirmed)
 - [x] All forms submit and persist — no demo data anywhere
+
+## Documentation & GitHub Push
+- [ ] README.md — complete setup guide, architecture, tech stack
+- [ ] DATA_DICTIONARY.md — every field mapped to DB column with types/constraints
+- [ ] DATABASE_ARCHITECTURE.md — all 8 tables with schemas and relationships
+- [ ] API_DOCS.md — every tRPC and Flask endpoint documented
+- [ ] FIELD_MAPPING.md — UI form field to DB column mapping for every form
+- [ ] CHANGELOG.md — complete build and fix history
+- [ ] Push to GitHub: midnghtsapphire/universal-sar-app
