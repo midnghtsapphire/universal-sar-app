@@ -1,9 +1,0 @@
-TEAMS PAGE - WORKING!
-
-The Teams page shows the previously created team:
-- Alpha K9 Unit (Ground type, available status)
-- Members: 4
-- Contact: Channel 7, 604-555-0142
-
-The team was created in a previous test and persists in the database.
-The "Add Team" button is available to create more teams.

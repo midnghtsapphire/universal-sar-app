@@ -1,9 +1,0 @@
-ERROR on Launch Search Operation:
-Failed query: insert into `subjects` (`id`, `operationId`, `subjectType`, `subjectSubtype`, `name`, `description`, `photoUrl`, `lastKnownLat`, `lastKnownLng`, `lastKnownAlt`, `lastSeenAt`, `directionOfTravel`, `circumstances`, `status`, `attributes`, `createdBy`, `createdAt`, `updatedAt`) values (default, ?, ?, ?, ?, ?, default, ?, ?, default, ?, default, ?, default, ?, ?, default, default)
-
-params: 60001,human,hiker,Ryan Shtuka,50.8812,-119.8925,2026-04-02 21:31:16.584,Left a house party at Sundance Resort around 2:00 AM on Feb 17, 2018. Temperature was -26C. Never arrived at his accommodation. Last seen walking between buildings in deep snow. Extensive SAR operation followed.,{"age":20,"height_cm":183,"weight_kg":82},1
-
-DIAGNOSIS: The subjects table insert is failing. The issue is likely that the `id` column is being set to `default` but the table might have auto_increment issues, or there's a column mismatch. Need to check:
-1. The subjects table schema in the DB
-2. The createSubject function in db.ts
-3. Whether the `id` column has auto_increment

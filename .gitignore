@@ -111,3 +111,23 @@ temp/
 
 # Manus version file (auto-generated, not part of source)
 client/public/__manus__/version.json
+
+# Debug/test output files (not part of source)
+analytics-test.txt
+dashboard-test.txt
+error-analysis.txt
+error-detail.txt
+gpr-protocol.txt
+issue-analysis.txt
+livemap-test.txt
+screenshot-notes.txt
+sighting-success.txt
+snowbridge-test.txt
+teams-success.txt
+terrain-anomalies.txt
+terrain-success.txt
+test-findings.txt
+test-pre-submit.txt
+test-results.txt
+test-step3-findings.txt
+test-submit-success.txt
