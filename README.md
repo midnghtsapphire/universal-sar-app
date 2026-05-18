@@ -190,7 +190,10 @@ universal-sar-app/
 │   └── api_server.py      # Flask microservice wrapper
 ├── drizzle/
 │   └── schema.ts          # Full database schema (8 tables)
-└── docs/                  # 9 extended documentation files
+├── docs/                  # 9 extended documentation files
+├── DEPLOYMENT_GUIDE.md    # Production deployment runbook/checklist
+├── GO_TO_MARKET.md        # Market strategy, channels, SEO clusters
+└── MARKET_LABELS.md       # Standard labels for market/release workflow
 ```
 
 ---
@@ -200,4 +203,3 @@ universal-sar-app/
 | Feature | Status |
 |---------|--------|
 | Feature | ✅ Ready |
-
