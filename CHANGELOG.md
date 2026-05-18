@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 All Rights Reserved. Copyright 2010–2026 Freedom Angel Corp / Audrey Evans.
 
+## [Unreleased]
+
+### Added
+- `GO_TO_MARKET.md` with global SAR market positioning, launch channels, alternative revenue/distribution streams, and underserved SEO opportunity clusters
+- `DEPLOYMENT_GUIDE.md` with production deployment steps, release gates, and rollback runbook
+- `MARKET_LABELS.md` with standardized stage/workstream/segment/priority/SEO labels for shipping through proper channels
+
 ## [1.0.0] - 2026-04-02
 
 ### Added
